@@ -27,12 +27,15 @@ on:
         description: Working directory where helm command line will run
         type: string
         default: .
-      secret_names:
+      secrets_map:
         required: false
         description: |
-          Comma-separated list of secret names to export to the build environment.
-          Example: "NPM_TOKEN,MAVEN_TOKEN"
-          Recommended: use BuildKit secret mount in DockerFile to avoid storing secrets in the image
+          Newline-separated KEY=VALUE pairs to export as environment variables.
+          Use this when you need to rename a secret or pass values from outside the repository secrets.
+          Example:
+            secrets_map: |
+              DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+              API_KEY=${{ secrets.API_KEY }}
         type: string
         default: ""
 
@@ -55,42 +58,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Export secrets to env
-        uses: actions/github-script@v9
+      - name: Export secrets map to env
+        if: inputs.secrets_map != ''
         env:
-          ALL_SECRETS: ${{ toJSON(secrets) }}
-          SECRET_NAMES: ${{ inputs.secret_names }}
-        with:
-          script: |
-            const secrets = JSON.parse(process.env.ALL_SECRETS);
-            const secretNames = process.env.SECRET_NAMES || '';
-            const allowedNames = secretNames.split(',').map(s => s.trim()).filter(Boolean);
-
-            if (allowedNames.length === 0) {
-              core.info('No secrets specified for export. Skipping.');
-              return;
-            }
-
-            core.info(`Exporting ${allowedNames.length} secret(s)...`);
-
-            for (const name of allowedNames) {
-              if (name === 'GITHUB_TOKEN') {
-                core.warning('GITHUB_TOKEN is managed automatically and should not be exported');
-                continue;
-              }
-              if (name === 'VAULT_TOKEN') {
-                core.warning('VAULT_TOKEN is an infrastructure secret and should not be exported to builds');
-                continue;
-              }
-
-              if (secrets[name]) {
-                core.exportVariable(name, secrets[name]);
-                core.info(`Exported secret: ${name}`);
-              } else {
-                core.setFailed(`Secret '${name}' not found in repository secrets`);
-                return;
-              }
-            }
+          SECRETS_MAP: ${{ inputs.secrets_map }}
+        run: |
+          while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            echo "$line" >> "$GITHUB_ENV"
+          done <<< "$SECRETS_MAP"
 
       - name: Install Skaffold
         run: |

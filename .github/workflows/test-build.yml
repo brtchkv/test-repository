@@ -19,5 +19,7 @@ jobs:
       skaffold_command: run
       skaffold_extra_params: "--cache-artifacts=false"
       workdir: .
-      secret_names: "MY_SECRET_1"
+      secrets_map: |
+        MY_SECRET_1=${{ secrets.MY_SECRET_1 }}
+        MY_SECRET_2=${{ secrets.MY_SECRET_2 }}
     secrets: inherit
