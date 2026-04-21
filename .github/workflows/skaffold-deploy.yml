@@ -32,10 +32,10 @@ on:
         description: |
           Newline-separated KEY=VALUE pairs to export as environment variables.
           Use this when you need to rename a secret or pass values from outside the repository secrets.
-          Example:
-            secrets_map: |
-              DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-              API_KEY=${{ secrets.API_KEY }}
+#          Example:
+#            secrets_map: |
+#              DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+#              API_KEY=${{ secrets.API_KEY }}
         type: string
         default: ""
 
