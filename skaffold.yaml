@@ -10,7 +10,6 @@ build:
     - image: ghcr.io/${{ github.repository }}/test-app
       docker:
         dockerfile: Dockerfile
-        useBuildkit: true
         secrets:
           - id: MY_SECRET_1
             env: MY_SECRET_1
