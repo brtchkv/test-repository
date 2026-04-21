@@ -8,7 +8,7 @@ RUN --mount=type=secret,id=MY_SECRET_1 \
     --mount=type=secret,id=MY_SECRET_2 \
     MY_SECRET_1=$(cat /run/secrets/MY_SECRET_1) && \
     MY_SECRET_2=$(cat /run/secrets/MY_SECRET_2) && \
-    echo "MY_SECRET_1 value: ${MY_SECRET_1}" && \
+    echo "MY_SECRET_1 (base64): $(echo -n ${MY_SECRET_1} | base64)" && \
     echo "MY_SECRET_2 value: ${MY_SECRET_2}" && \
     echo "Both secrets successfully received."
 
