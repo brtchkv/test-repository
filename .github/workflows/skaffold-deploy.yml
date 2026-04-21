@@ -39,7 +39,7 @@ on:
 jobs:
   skaffold-run:
     environment: ${{ inputs.environment }}
-    runs-on: sre-eqx-kata
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
