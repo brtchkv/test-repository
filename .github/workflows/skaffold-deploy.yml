@@ -92,6 +92,12 @@ jobs:
               }
             }
 
+      - name: Install Skaffold
+        run: |
+          curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64
+          chmod +x skaffold
+          sudo mv skaffold /usr/local/bi      
+
       - name: Skaffold
         working-directory: "${{ inputs.workdir }}"
         run: "skaffold ${{ inputs.skaffold_command }} -p ${{ inputs.skaffold_profile }} ${{ inputs.skaffold_extra_params }}"
