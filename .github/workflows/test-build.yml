@@ -19,4 +19,5 @@ jobs:
       skaffold_command: run
       skaffold_extra_params: "--cache-artifacts=false"
       workdir: .
+      secret_names: "MY_SECRET_3"
     secrets: inherit
