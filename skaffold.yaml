@@ -7,7 +7,7 @@ build:
   local:
     useBuildkit: true
   artifacts:
-    - image: ghcr.io/${{ github.repository }}/test-app
+    - image: ghcr.io/brtchkv/test-repository/test-app
       docker:
         dockerfile: Dockerfile
         secrets:
