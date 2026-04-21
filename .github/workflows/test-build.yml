@@ -1,0 +1,18 @@
+name: Test Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    uses: ./.github/workflows/skaffold-deploy.yml
+    with:
+      skaffold_profile: dev
+      skaffold_command: run
+      skaffold_extra_params: "--cache-artifacts=false"
+      workdir: .
+      secret_names: "MY_SECRET_1,MY_SECRET_2"
+    secrets: inherit

@@ -1,0 +1,23 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: test-app
+
+build:
+  local:
+    useBuildkit: true
+  artifacts:
+    - image: ghcr.io/${{ github.repository }}/test-app
+      docker:
+        dockerfile: Dockerfile
+        useBuildkit: true
+        secrets:
+          - id: MY_SECRET_1
+            env: MY_SECRET_1
+          - id: MY_SECRET_2
+            env: MY_SECRET_2
+
+profiles:
+  - name: dev
+    activation:
+      - command: run
