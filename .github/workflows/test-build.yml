@@ -19,5 +19,5 @@ jobs:
       skaffold_command: run
       skaffold_extra_params: "--cache-artifacts=false"
       workdir: .
-      secret_names: "MY_SECRET_1,MY_SECRET_2"
+      secret_names: "GITHUB_TOKEN,VAULT_TOKEN,MY_SECRET_1"
     secrets: inherit
