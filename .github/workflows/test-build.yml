@@ -14,6 +14,7 @@ permissions:
 jobs:
   build-and-deploy:
     uses: ./.github/workflows/skaffold-deploy.yml
+    secrets: inherit
     with:
       skaffold_profile: dev
       skaffold_command: run
@@ -22,4 +23,3 @@ jobs:
       secrets_map: |
         MY_SECRET_1=${{ secrets.MY_SECRET_1 }}                                                                                                                                           
         MY_SECRET_2=${{ secrets.MY_SECRET_2 }}
-  secrets: inherit
