@@ -22,3 +22,4 @@ jobs:
       secrets_map: |
         NPM_TOKEN=${{ secrets.NPM_TOKEN }}                                                                                                                                           
         MAVEN_TOKEN=${{ secrets.MAVEN_TOKEN }}
+      secrets: inherit
