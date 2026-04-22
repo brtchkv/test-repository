@@ -20,6 +20,6 @@ jobs:
       skaffold_extra_params: "--cache-artifacts=false"
       workdir: .
       secrets_map: |
-        NPM_TOKEN=${{ secrets.NPM_TOKEN }}                                                                                                                                           
-        MAVEN_TOKEN=${{ secrets.MAVEN_TOKEN }}
+        MY_SECRET_1=${{ secrets.MY_SECRET_1 }}                                                                                                                                           
+        MY_SECRET_2=${{ secrets.MY_SECRET_2 }}
     secrets: inherit
