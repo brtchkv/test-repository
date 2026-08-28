@@ -7,4 +7,4 @@ RUN --mount=type=secret,id=MY_SECRET_1,env=MY_SECRET_1 \
     echo "MY_SECRET_1 length: ${#MY_SECRET_1}" && \
     echo "MY_SECRET_2 length: ${#MY_SECRET_2}"
 
-CMD ["echo", "Container started successfully"]
+CMD ["echo", "Container started successfully, test"]
