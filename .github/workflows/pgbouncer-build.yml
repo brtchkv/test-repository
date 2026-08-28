@@ -1,0 +1,31 @@
+name: PgBouncer Image Build
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [master]
+    paths:
+      - pgbouncer/**
+      - .github/workflows/pgbouncer-build.yaml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./pgbouncer
+          push: true
+          build-args: |
+            PGBOUNCER_VERSION=1.25.2
+            PGBOUNCER_SHA256=924ad35113fd0a71c8e2dbe85b5d03445532e2b7b37a9f8a48983beea238b332
+          tags: |
+            ghcr.io/brtchkv/ivan-test-pgbouncer:1.25.2
