@@ -1,0 +1,15 @@
+## Web Terminal pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kubectl-toolkit
+spec:
+  containers:
+    - name: toolkit
+      env:
+        - name: IDLE_TIMEOUT
+          value: "3600"
+      image: registry.jetbrains.team/p/kitd/public/kubectl-toolkit:latest
+      imagePullPolicy: IfNotPresent
+  serviceAccountName: deployer
+  terminationGracePeriodSeconds: 10

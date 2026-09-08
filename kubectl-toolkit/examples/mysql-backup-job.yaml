@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mysql-backup-mydatabase
+spec:
+  ttlSecondsAfterFinished: 86400  # Remove finished job after 1 day
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: toolkit
+          image: registry.jetbrains.team/p/kitd/public/kubectl-toolkit:latest
+          command: ["/bin/mysql-backup"]
+          envFrom:
+            - secretRef: # db secret
+                name: mysql-user # secret to database RO or RW user. Important: it should be rw for mysql
+            - secretRef: # bucket secret
+                name: bucket-user # secret to bucket with RW permissions
+          env:
+            - name: BACKUP_PREFIX # prefix in the bucket for a backup file
+              value: backups/mysql/
+#            - name: BACKUP_FILE     # Optional. Sets backup file name, by default it's
+#              value: my-backup-file-name # backup will be stored as $BACKUP_PREFIX/$BACKUP_FILE.sql.gz
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 50Gi # provide suitable size

@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pg-backup-mydatabase
+spec:
+  schedule: "0 2 * * *"  # Run daily at 2:00 AM
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 43200  # Remove finished job after 12 hours
+      backoffLimit: 3
+      template:
+        spec:
+          containers:
+            - name: postgresql-backuper
+              image: registry.jetbrains.team/p/kitd/public/kubectl-toolkit:latest
+              command: ["/bin/psql-backup"]
+              envFrom:
+                - secretRef: # db secret
+                    name: my-database-admin # secret to database admin user. Important: it should be admin for pg
+                - secretRef: # bucket secret
+                    name: my-backup-bucket # secret to bucket with Write/ReadWrite permissions
+              env:
+                - name: BACKUP_PREFIX # prefix in the bucket for backup file
+                  value: backups/psql
+                # - name: BACKUP_FILE     # set backup file name, by default it is
+                #   value: my-last-backup # backup will be stored as BACKUP_PREFIX/BACKUP_FILE.dump.gz
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              ephemeral:
+                volumeClaimTemplate:
+                  spec:
+                    accessModes: [ "ReadWriteOnce" ]
+                    resources:
+                      requests:
+                        storage: 50Gi # provide suitable size
+          restartPolicy: Never

@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mysql-restore
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: toolkit
+          image: registry.jetbrains.team/p/kitd/public/kubectl-toolkit:latest
+          command: ["/bin/mysql-restore"]
+          envFrom:
+            - secretRef: # db secret
+                name: mysql-user # secret to database RW user.
+            - secretRef: # bucket secret
+                name: bucket-user # secret to bucket with RO permissions
+          env:
+            ## Direct file name in the bucket
+            #- name: BACKUP_FILE
+            #  value: backups/mysql/sre-test-sre-test2-fbbxMw_20250409_163213.sql.gz
+            - name: BACKUP_PREFIX
+              value: backups/mysql/
+      volumes:
+        - name: tmp
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 50Gi # provide suitable size

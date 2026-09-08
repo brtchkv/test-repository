@@ -1,0 +1,133 @@
+#!/bin/bash
+# Bash completion for bucket.sh command
+
+_bucket_completion() {
+    local cur prev words cword
+    _init_completion || return
+
+    # List of main commands
+    local commands="ls info put delete get copy"
+
+    # Processing based on current position and previous word
+    case $cword in
+        1)
+            # Autocompletion for first-level commands
+            COMPREPLY=($(compgen -W "$commands" -- "$cur"))
+            return 0
+            ;;
+        2)
+            # Autocompletion for the second argument
+            case $prev in
+                ls|info|delete|get)
+                    # Completion for s3:// and secret names
+                    echo "ls complet"
+                    if [[ "$cur" == s3://* ]]; then
+                        echo "ls prefix"
+                        # Get the secret name after s3://
+                        local prefix="s3://"
+                        local secret_part="${cur#$prefix}"
+
+                        # Get the list of secrets from kubectl
+                        local secrets=$(kubectl $KUBECTL_OPTIONS get secrets -o name | sed 's/^secret\///')
+
+                        # Generate completions with s3:// prefix
+                        local completions=()
+                        for secret in $secrets; do
+                            if [[ "$secret" == "$secret_part"* ]]; then
+                                completions+=("$prefix$secret/")
+                            fi
+                        done
+
+                        COMPREPLY=(${completions[@]})
+                    else
+                        # If s3:// prefix is not entered, suggest it
+                        COMPREPLY=($(compgen -W "s3://" -- "$cur"))
+                    fi
+                    return 0
+                    ;;
+                put)
+                    # For put command, suggest local files or special value -
+                    if [[ "$cur" == "-" ]]; then
+                        COMPREPLY=("-")
+                    else
+                        _filedir
+                    fi
+                    return 0
+                    ;;
+                copy)
+                    # Completion for s3:// and secret names (as in ls case)
+                    if [[ "$cur" == s3://* ]]; then
+                        local prefix="s3://"
+                        local secret_part="${cur#$prefix}"
+                        local secrets=$(kubectl $KUBECTL_OPTIONS get secrets -o name | sed 's/^secret\///')
+                        local completions=()
+                        for secret in $secrets; do
+                            if [[ "$secret" == "$secret_part"* ]]; then
+                                completions+=("$prefix$secret/")
+                            fi
+                        done
+                        COMPREPLY=(${completions[@]})
+                    else
+                        COMPREPLY=($(compgen -W "s3://" -- "$cur"))
+                    fi
+                    return 0
+                    ;;
+            esac
+            ;;
+        3)
+            # Autocompletion for the third argument
+            case ${words[1]} in
+                get)
+                    # For get command, suggest local files or -
+                    if [[ "$cur" == "-" ]]; then
+                        COMPREPLY=("-")
+                    else
+                        _filedir
+                    fi
+                    return 0
+                    ;;
+                put)
+                    # For put command, the third argument is s3://secret/path
+                    if [[ "$cur" == s3://* ]]; then
+                        local prefix="s3://"
+                        local secret_part="${cur#$prefix}"
+                        local secrets=$(kubectl $KUBECTL_OPTIONS get secrets -o name | sed 's/^secret\///')
+                        local completions=()
+                        for secret in $secrets; do
+                            if [[ "$secret" == "$secret_part"* ]]; then
+                                completions+=("$prefix$secret/")
+                            fi
+                        done
+                        COMPREPLY=(${completions[@]})
+                    else
+                        COMPREPLY=($(compgen -W "s3://" -- "$cur"))
+                    fi
+                    return 0
+                    ;;
+                copy)
+                    # For copy command, the third argument is the second s3://secret/path
+                    if [[ "$cur" == s3://* ]]; then
+                        local prefix="s3://"
+                        local secret_part="${cur#$prefix}"
+                        local secrets=$(kubectl get secrets -o name | sed 's/^secret\///')
+                        local completions=()
+                        for secret in $secrets; do
+                            if [[ "$secret" == "$secret_part"* ]]; then
+                                completions+=("$prefix$secret/")
+                            fi
+                        done
+                        COMPREPLY=(${completions[@]})
+                    else
+                        COMPREPLY=($(compgen -W "s3://" -- "$cur"))
+                    fi
+                    return 0
+                    ;;
+            esac
+            ;;
+    esac
+
+    return 0
+}
+
+# Register the function for bucket command autocompletion
+complete -F _bucket_completion bucket

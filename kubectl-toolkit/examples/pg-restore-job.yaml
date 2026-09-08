@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pg-restore
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: toolkit
+          image: registry.jetbrains.team/p/kitd/public/kubectl-toolkit:latest
+          command: ["/bin/psql-restore"]
+          envFrom:
+            - secretRef: # db secret
+                name: database-admin-user # secret to database admin user. Important: it should be admin for pg
+            - secretRef: # bucket secret
+                name: bucket-user # secret to bucket with RO permissions
+          env:
+            ## Direct file name in the bucket
+            - name: BACKUP_FILE
+              value: backups/sre-test2/sre-test-sre-test2-fbbxMw_20250409_163213.pgdump.gz
+            ## Will find the newest .pgdump.gz file in the bucket by prefix
+#            - name: BACKUP_PREFIX
+#              value: backups/psql/
+            ## use RESTORE_OWNER only if you want to restore full database with permissions
+            #- name: RESTORE_OWNER
+            #  value: "true"
+      volumes:
+        - name: tmp
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 50Gi # provide suitable size

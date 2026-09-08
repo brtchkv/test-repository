@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pg-restore-mydatabase
+spec:
+  schedule: "0 3 * * *"  # Run daily at 2:00 AM
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 43200  # Remove finished job after 12 hours
+      backoffLimit: 3
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: postgresql-restore
+              image: registry.jetbrains.team/p/kitd/public/kubectl-toolkit:latest
+              command: [ "/bin/psql-restore" ]
+              envFrom:
+                - secretRef: # db secret
+                    name: my-database-admin # secret to database admin user. Important: it should be admin for pg
+                - secretRef: # bucket secret
+                    name: my-backup-bucket # secret to bucket with ReadOnly/ReadWrite permissions
+              env:
+                ## Direct file name in the bucket
+                #- name: BACKUP_FILE
+                #  value: backups/sre-test2/sre-test-sre-test2-fbbxMw_20250409_163213.pgdump.gz
+                - name: BACKUP_PREFIX
+                  value: backups/psql/
+                ## use RESTORE_OWNER only if you want to restore full database with permissions
+                #- name: RESTORE_OWNER
+                #  value: "true"
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              ephemeral:
+                volumeClaimTemplate:
+                  spec:
+                    accessModes: [ "ReadWriteOnce" ]
+                    resources:
+                      requests:
+                        storage: 50Gi # provide suitable size
