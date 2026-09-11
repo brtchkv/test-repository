@@ -35,8 +35,8 @@ esac
 
 SECRET_NAME="$1"
 
-echo "Reading Kafka credentials from secret $SECRET_NAME"
-SECRET_DATA=$(kubectl $KUBECTL_OPTIONS get secret "$SECRET_NAME" -o json | jq -r '.data')
+echo "Reading Kafka credentials from secret $SECRET_NAME. Please, wait, it can take up to a minute"
+SECRET_DATA=$(kubectl $KUBECTL_OPTIONS get secret "$SECRET_NAME" -o json | jq -c '.data // {}')
 eval $( echo $SECRET_DATA | jq -r 'to_entries | map("\(.key|ascii_upcase|gsub("[^a-zA-Z0-9]+"; "_"))=\(.value|@base64d|@sh)") | .[]')
 
 if [ -z "$KAFKA_BOOTSTRAP_SERVERS" ] || [ -z "$KAFKA_SASL_USERNAME" ] || [ -z "$KAFKA_SASL_PASSWORD" ]; then

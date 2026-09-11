@@ -3,11 +3,13 @@ FROM alpine:3.23 AS kafka-tools
 
 ARG KAFKA_VERSION=4.3.1
 ARG SCALA_VERSION=2.13
-ARG TARGETARCH
 
 # Kafka Debug CLI tools. kafka-run-class.sh is the launcher used by all of them.
 # kafka-configs.sh is deliberately NOT shipped: it is still Scala (kafka.admin.ConfigCommand)
-# and would drag in scala-library + core + coordinator jars
+# and would drag in scala-library + core + coordinator jars.
+# kafka-acls.sh is for listing only: ACLs are declarative through KafkaAclBinding CRDs
+# reconciled by the kafka-controller, so a CLI mutation is either rejected by the broker
+# or drifts and is reconciled back
 ARG KAFKA_BIN="kafka-run-class.sh \
       kafka-topics.sh \
       kafka-console-producer.sh \
@@ -45,20 +47,20 @@ ARG KAFKA_LIBS="argparse4j-*.jar \
       snappy-java-*.jar \
       zstd-jni-*.jar"
 
+# binutils provides objcopy, required by jlink --strip-debug
 RUN apk add --no-cache \
       openjdk21-jdk \
       binutils \
-      curl \
-      tar \
-      zip \
-      unzip
+      curl
 
-RUN curl -fL \
-      "https://downloads.apache.org/kafka/${KAFKA_VERSION}/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz" \
-      -o /tmp/kafka.tgz \
-    && mkdir -p /opt \
-    && tar -xzf /tmp/kafka.tgz -C /opt \
-    && rm /tmp/kafka.tgz
+RUN set -eu; \
+    url="https://dlcdn.apache.org/kafka/${KAFKA_VERSION}/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz"; \
+    curl -fL "$url" -o /tmp/kafka.tgz; \
+    curl -fL "$url.sha512" -o /tmp/kafka.tgz.sha512; \
+    echo "$(tr -d '[:space:]' < /tmp/kafka.tgz.sha512 | cut -d: -f2 | tr 'A-F' 'a-f')  /tmp/kafka.tgz" | sha512sum -c -; \
+    mkdir -p /opt; \
+    tar -xzf /tmp/kafka.tgz -C /opt; \
+    rm /tmp/kafka.tgz /tmp/kafka.tgz.sha512
 
 # java.desktop is required by log4j-core (LoggerContext implements java.beans.PropertyChangeListener), jdk.crypto.ec by
 # TLS 1.3 key exchange, jdk.security.auth by the JAAS config used for SASL, java.security.sasl
@@ -88,7 +90,7 @@ RUN set -eu; \
 
 FROM alpine:3.23
 
-# libc6-compat needed for Kafka
+# libc6-compat, bundled in the Kafka jars are glibc-linked (NEEDED ld-linux-x86-64.so.2), which musl does not provide. Unused on arm64
 RUN apk update && apk upgrade && \
     apk add --update --no-cache vim bash-completion less zip unzip jq curl wget bind-tools iputils-ping traceroute \
     busybox-extras openssl mysql-client postgresql-client s3cmd redis \
@@ -113,7 +115,7 @@ ENV KAFKA_HOME=/opt/kafka
 ENV PATH="/opt/java/bin:/opt/kafka/bin:${PATH}"
 
 # Disable JMX options because the jlink runtime intentionally excludes
-# JMX/JFR-related modules that are not needed for CLI usage
+# jdk.management.agent (java.management itself is included), not needed for CLI usage
 ENV KAFKA_JMX_OPTS=" "
 
 COPY watcher.sh /bin/container-watcher
