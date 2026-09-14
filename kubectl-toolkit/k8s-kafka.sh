@@ -35,9 +35,16 @@ esac
 
 SECRET_NAME="$1"
 
-echo "Reading Kafka credentials from secret $SECRET_NAME. Please, wait, it can take up to a minute"
+echo "Reading Kafka credentials from secret $SECRET_NAME. Please, wait, it can take up to a minute..."
 SECRET_DATA=$(kubectl $KUBECTL_OPTIONS get secret "$SECRET_NAME" -o json | jq -c '.data // {}')
-eval $( echo $SECRET_DATA | jq -r 'to_entries | map("\(.key|ascii_upcase|gsub("[^a-zA-Z0-9]+"; "_"))=\(.value|@base64d|@sh)") | .[]')
+
+# read only the allowlisted keys - never eval attacker-chosen key names into shell variables
+secret_value() { printf '%s' "$SECRET_DATA" | jq -r --arg k "$1" '.[$k] // "" | @base64d'; }
+KAFKA_BOOTSTRAP_SERVERS=$(secret_value KAFKA_BOOTSTRAP_SERVERS)
+KAFKA_SASL_USERNAME=$(secret_value KAFKA_SASL_USERNAME)
+KAFKA_SASL_PASSWORD=$(secret_value KAFKA_SASL_PASSWORD)
+KAFKA_SECURITY_PROTOCOL=$(secret_value KAFKA_SECURITY_PROTOCOL)
+KAFKA_SASL_MECHANISM=$(secret_value KAFKA_SASL_MECHANISM)
 
 if [ -z "$KAFKA_BOOTSTRAP_SERVERS" ] || [ -z "$KAFKA_SASL_USERNAME" ] || [ -z "$KAFKA_SASL_PASSWORD" ]; then
   echo "ERROR: '$SECRET_NAME' is not a KafkaUser secret, its keys are:" \
