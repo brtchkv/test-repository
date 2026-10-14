@@ -35,8 +35,15 @@ esac
 
 SECRET_NAME="$1"
 
+# k8s secret names are DNS subdomains - reject anything else before it reaches kubectl as an
+# option or the config path below as a traversal
+if ! [[ "$SECRET_NAME" =~ ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$ ]]; then
+  echo "ERROR: invalid secret name '$SECRET_NAME'" >&2
+  exit 1
+fi
+
 echo "Reading Kafka credentials from secret $SECRET_NAME. Please, wait, it can take up to a minute..."
-SECRET_DATA=$(kubectl $KUBECTL_OPTIONS get secret "$SECRET_NAME" -o json | jq -c '.data // {}')
+SECRET_DATA=$(kubectl $KUBECTL_OPTIONS get secret -o json -- "$SECRET_NAME" | jq -c '.data // {}')
 
 # read only the allowlisted keys - never eval attacker-chosen key names into shell variables
 secret_value() { printf '%s' "$SECRET_DATA" | jq -r --arg k "$1" '.[$k] // "" | @base64d'; }

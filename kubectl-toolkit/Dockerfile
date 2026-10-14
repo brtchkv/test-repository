@@ -3,6 +3,7 @@ FROM alpine:3.23 AS kafka-tools
 
 ARG KAFKA_VERSION=4.3.1
 ARG SCALA_VERSION=2.13
+ARG KAFKA_SHA512=c7d7b2318cb51aa0c61d3246a51c349210073c5c9b754947ef965a439f2f939e8600f204e134a75ac31faf3829c9370960ef7c6a9886c8a1dbf0339a21f4c54c
 
 # Kafka Debug CLI tools. kafka-run-class.sh is the launcher used by all of them.
 # kafka-configs.sh is deliberately NOT shipped: it is still Scala (kafka.admin.ConfigCommand)
@@ -54,13 +55,20 @@ RUN apk add --no-cache \
       curl
 
 RUN set -eu; \
-    url="https://dlcdn.apache.org/kafka/${KAFKA_VERSION}/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz"; \
+    filename="kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz"; \
+    dnsRegistry="https://dlcdn.apache.org/kafka"; \
+    archiveRegistry="https://archive.apache.org/dist/kafka"; \
+    if curl -fsIL "${dnsRegistry}/${KAFKA_VERSION}/${filename}" >/dev/null; then \
+        base="${dnsRegistry}/${KAFKA_VERSION}"; \
+    else \
+        base="${archiveRegistry}/${KAFKA_VERSION}"; \
+    fi; \
+    url="${base}/${filename}"; \
     curl -fL "$url" -o /tmp/kafka.tgz; \
-    curl -fL "$url.sha512" -o /tmp/kafka.tgz.sha512; \
-    echo "$(tr -d '[:space:]' < /tmp/kafka.tgz.sha512 | cut -d: -f2 | tr 'A-F' 'a-f')  /tmp/kafka.tgz" | sha512sum -c -; \
+    echo "${KAFKA_SHA512}  /tmp/kafka.tgz" | sha512sum -c -; \
     mkdir -p /opt; \
     tar -xzf /tmp/kafka.tgz -C /opt; \
-    rm /tmp/kafka.tgz /tmp/kafka.tgz.sha512
+    rm /tmp/kafka.tgz
 
 # java.desktop is required by log4j-core (LoggerContext implements java.beans.PropertyChangeListener), jdk.crypto.ec by
 # TLS 1.3 key exchange, jdk.security.auth by the JAAS config used for SASL, java.security.sasl
@@ -119,6 +127,7 @@ ENV PATH="/opt/java/bin:/opt/kafka/bin:${PATH}"
 ENV KAFKA_JMX_OPTS=" "
 
 COPY watcher.sh /bin/container-watcher
+COPY k8s-secret-util.sh /bin/k8s-secret-util.sh
 COPY k8s-mysql.sh /bin/k8s-mysql
 COPY k8s-psql.sh /bin/k8s-psql
 COPY k8s-secret.sh /bin/k8s-secret

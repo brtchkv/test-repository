@@ -3,12 +3,11 @@
 # usage: k8s-secret SECRET_NAME VAR_PREFIX
 # env KUBECTL_OPTIONS - custom options for kubectl
 
-export SECRET_PREFIX=$2
+. "$(dirname "${BASH_SOURCE[0]}")/k8s-secret-util.sh"
 
-SECRET_DATA=$(kubectl $KUBECTL_OPTIONS get secret "$1" -o json | jq -r '.data')
+k8s_import_secret "$1" "${2-}"
+echo "Import environment variables from secret '$1': ${K8S_IMPORTED_VARS// /, }"
 
-SECRET_VAR_LIST=$(echo $SECRET_DATA | jq -r 'to_entries | map("\(env.SECRET_PREFIX)\(.key|ascii_upcase|gsub("[^a-zA-Z0-9]+"; "_"))") | .[]' | sort | awk 'ORS=", "')
-echo "Import environment variables from secret '$1':" ${SECRET_VAR_LIST%', '}
-
-eval $( echo $SECRET_DATA | jq -r 'to_entries | map("\(env.SECRET_PREFIX|"")\(.key|ascii_upcase|gsub("[^a-zA-Z0-9]+"; "_"))=\(.value|@base64d|@sh)") | .[]')
-unset SECRET_DATA
+# this script is meant to be sourced - do not leak the helpers into the user's shell
+unset -f k8s_import_secret
+unset K8S_IMPORTED_VARS
