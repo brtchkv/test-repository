@@ -5,6 +5,8 @@
 
 set -eo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/k8s-secret-util.sh"
+
 usage() {
   cat <<'EOF'
 usage: k8s-kafka SECRET_NAME [TOOL [ARGS...]]
@@ -43,22 +45,17 @@ if ! [[ "$SECRET_NAME" =~ ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$ ]]; then
 fi
 
 echo "Reading Kafka credentials from secret $SECRET_NAME. Please, wait, it can take up to a minute..."
-SECRET_DATA=$(kubectl $KUBECTL_OPTIONS get secret -o json -- "$SECRET_NAME" | jq -c '.data // {}')
-
-# read only the allowlisted keys - never eval attacker-chosen key names into shell variables
-secret_value() { printf '%s' "$SECRET_DATA" | jq -r --arg k "$1" '.[$k] // "" | @base64d'; }
-KAFKA_BOOTSTRAP_SERVERS=$(secret_value KAFKA_BOOTSTRAP_SERVERS)
-KAFKA_SASL_USERNAME=$(secret_value KAFKA_SASL_USERNAME)
-KAFKA_SASL_PASSWORD=$(secret_value KAFKA_SASL_PASSWORD)
-KAFKA_SECURITY_PROTOCOL=$(secret_value KAFKA_SECURITY_PROTOCOL)
-KAFKA_SASL_MECHANISM=$(secret_value KAFKA_SASL_MECHANISM)
+KAFKA_BOOTSTRAP_SERVERS="" KAFKA_SASL_USERNAME="" KAFKA_SASL_PASSWORD="" KAFKA_SECURITY_PROTOCOL="" KAFKA_SASL_MECHANISM=""
+k8s_import_secret "$SECRET_NAME" "" \
+  KAFKA_BOOTSTRAP_SERVERS KAFKA_SASL_USERNAME KAFKA_SASL_PASSWORD KAFKA_SECURITY_PROTOCOL KAFKA_SASL_MECHANISM
 
 if [ -z "$KAFKA_BOOTSTRAP_SERVERS" ] || [ -z "$KAFKA_SASL_USERNAME" ] || [ -z "$KAFKA_SASL_PASSWORD" ]; then
-  echo "ERROR: '$SECRET_NAME' is not a KafkaUser secret, its keys are:" \
-       "$(echo $SECRET_DATA | jq -r 'keys | join(", ")')" >&2
+  echo "ERROR: '$SECRET_NAME' is not a KafkaUser secret:" \
+       "KAFKA_BOOTSTRAP_SERVERS, KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD are required," \
+       "found: ${K8S_IMPORTED_VARS:-none}" >&2
   exit 1
 fi
-unset SECRET_DATA
+unset K8S_IMPORTED_VARS
 
 case "${KAFKA_SASL_MECHANISM:=SCRAM-SHA-512}" in
   SCRAM-SHA-*) MODULE="scram.ScramLoginModule" ;;

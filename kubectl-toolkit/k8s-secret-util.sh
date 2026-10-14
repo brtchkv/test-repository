@@ -3,15 +3,18 @@
 # Shared helper for the k8s-* scripts. Not meant to be executed, only sourced:
 #   . "$(dirname "${BASH_SOURCE[0]}")/k8s-secret-util.sh"
 
-# usage: k8s_import_secret SECRET_NAME [VAR_PREFIX [ALLOWED_KEY...]]
+# usage: k8s_import_secret SECRET_NAME VAR_PREFIX [ALLOWED_KEY...]
 # env KUBECTL_OPTIONS - custom options for kubectl
 #
 # Fetches the secret with kubectl and assigns every entry to a shell variable named
 # VAR_PREFIX + KEY (key upper-cased, runs of non-alphanumerics replaced with "_").
-# If ALLOWED_KEYs are given, all other keys are ignored. Values are assigned one by
-# one with printf -v instead of eval - they must never reach the shell parser.
-# Names that would change shell behaviour (PATH, LD_*, IFS, ...) and readonly names
-# (UID, EUID, ...) are skipped.
+# If ALLOWED_KEYs are given, all other keys are ignored. Either a non-empty
+# VAR_PREFIX or an allowlist is required, so a secret can never define arbitrary
+# unprefixed variables. Values are assigned one by one with printf -v instead of
+# eval - they must never reach the shell parser.
+# As defense in depth, names that would change shell behaviour (PATH, LD_*, IFS, ...)
+# and readonly names (UID, EUID, ...) are still skipped: the prefix comes from the
+# caller and may itself be hostile (e.g. prefix "LD_" + key "preload").
 # Sets K8S_IMPORTED_VARS to the sorted, space-separated list of assigned names.
 # Local names are lower-cased so printf -v cannot collide with them: keys are always
 # upper-cased, so the assignments land in the caller's scope
@@ -23,9 +26,18 @@ k8s_import_secret() {
     echo "ERROR: invalid secret name '$_secret_name'" >&2
     return 1
   fi
-  # keep only safe characters in the prefix - it becomes part of a variable name
-  _prefix=$(printf '%s' "${2-}" | tr -cd 'A-Za-z0-9_')
+  # the prefix becomes part of a variable name - fail instead of silently mangling it
+  if ! [[ "${2-}" =~ ^([a-zA-Z_][a-zA-Z0-9_]*)?$ ]]; then
+    echo "ERROR: invalid variable prefix '${2-}', allowed: [a-zA-Z_][a-zA-Z0-9_]*" >&2
+    return 1
+  fi
+  _prefix="${2-}"
   _allowed=" ${*:3} "
+  # without a prefix or an allowlist, a secret could define any variable it likes
+  if [[ -z "$_prefix" && $# -le 2 ]]; then
+    echo "ERROR: a VAR_PREFIX or a list of allowed keys is required" >&2
+    return 1
+  fi
 
   _data=$(kubectl $KUBECTL_OPTIONS get secret -o json -- "$_secret_name" | jq -r '.data')
 
