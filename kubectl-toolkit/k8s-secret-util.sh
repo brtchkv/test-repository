@@ -26,18 +26,13 @@ k8s_import_secret() {
     echo "ERROR: invalid secret name '$_secret_name'" >&2
     return 1
   fi
-  # the prefix becomes part of a variable name - fail instead of silently mangling it
+  # the prefix becomes part of a variable name
   if ! [[ "${2-}" =~ ^([a-zA-Z_][a-zA-Z0-9_]*)?$ ]]; then
     echo "ERROR: invalid variable prefix '${2-}', allowed: [a-zA-Z_][a-zA-Z0-9_]*" >&2
     return 1
   fi
   _prefix="${2-}"
   _allowed=" ${*:3} "
-  # without a prefix or an allowlist, a secret could define any variable it likes
-  if [[ -z "$_prefix" && $# -le 2 ]]; then
-    echo "ERROR: a VAR_PREFIX or a list of allowed keys is required" >&2
-    return 1
-  fi
 
   _data=$(kubectl $KUBECTL_OPTIONS get secret -o json -- "$_secret_name" | jq -r '.data')
 
